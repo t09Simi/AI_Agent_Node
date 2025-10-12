@@ -26,9 +26,16 @@ Run the server
 Run on localhost: 
 http://localhost:5000/
 
+## Demo
+
+Here's an example the model generating response:
+![alt text](image-2.png)
+
 ## Future work & Improvemnets
 
-Node.js state management and  local storage for the chat history to persistbefore refreshing the page.
+Node.js state management and  local storage for the chat history to persist before refreshing the page.
+
+Production ready deployment
 
 Using modern frontend frameworks for UI design
 

@@ -30,7 +30,7 @@ http://localhost:5000/
 
 Here's an example the model generating response:
 
-![alt text](image-3.png)
+![Example Output](screenshots\output.png)
 
 ## Future work & Improvemnets
 

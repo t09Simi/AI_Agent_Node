@@ -1,0 +1,17 @@
+plaintext
+# Environment files
+.env
+.env.local
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+
+# OS & editor files
+.DS_Store
+*.log
+*.swp
+*~

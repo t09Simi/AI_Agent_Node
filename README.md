@@ -29,7 +29,8 @@ http://localhost:5000/
 ## Demo
 
 Here's an example the model generating response:
-![alt text](image-2.png)
+
+![alt text](image-3.png)
 
 ## Future work & Improvemnets
 

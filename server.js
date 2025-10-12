@@ -1,77 +1,91 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
 
-// Load environment variables
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 dotenv.config();
 
 const app = express();
 
-// Middleware
 app.use(cors());
 app.use(express.json());
+app.use(express.static(path.join(__dirname, "public")));
 
-// Sample route
-app.get("/", (req, res) => {
-  res.send("Node.js AI Agent backend is running! 🚀");
-});
+// STREAMING CHAT ENDPOINT (SSE)
+app.get("/api/stream", async (req, res) => {
+  const userMessage = req.query.message;
+  if (!userMessage) {
+    return res.status(400).send("Message query parameter is required");
+  }
 
-// Chat endpoint
-app.post("/api/chat", async (req, res) => {
+  // Tell browser to expect a continuous stream
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+
   try {
-    const { message } = req.body;
-
-    if (!message) {
-      return res.status(400).json({ error: "Message is required" });
-    }
-
-    // Call Ollama API with stream disabled
+    // Call Ollama API with streaming enabled
     const ollamaResponse = await fetch("http://localhost:11434/api/chat", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "llama3.2", // or "llama3", "mistral", etc.
+        model: "llama3.2", 
+        stream: true,
         messages: [
           { role: "system", content: "You are a helpful AI assistant." },
-          { role: "user", content: message },
+          { role: "user", content: userMessage },
         ],
-        stream: false, // ⚠️ Critical: Disable streaming
       }),
     });
 
-    if (!ollamaResponse.ok) {
-      const errText = await ollamaResponse.text();
-      console.error("Ollama API error:", errText);
-      return res.status(500).json({ error: "Failed to get response from Ollama" });
+    if (!ollamaResponse.ok || !ollamaResponse.body) {
+      res.write(`data: Error: Failed to connect to Ollama\n\n`);
+      res.end();
+      return;
     }
 
-    // Now safe to parse as single JSON
-    const data = await ollamaResponse.json();
+    const reader = ollamaResponse.body.getReader();
+    const decoder = new TextDecoder();
 
-    if (!data.message || !data.message.content) {
-      return res.status(500).json({ error: "Invalid response from Ollama" });
+    // Read the streaming chunks from Ollama and forward them to the client
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value, { stream: true });
+      const lines = chunk.split("\n").filter(Boolean);
+
+      for (const line of lines) {
+        try {
+          const data = JSON.parse(line);
+          if (data.message?.content) {
+            // Send each piece of text as an SSE event
+            res.write(`data: ${data.message.content}\n\n`);
+          }
+        } catch {
+          // Ignore malformed lines
+        }
+      }
     }
 
-    const reply = data.message.content;
-    res.json({ reply });
+    // Tell the browser we're done
+    res.write("data: [DONE]\n\n");
+    res.end();
   } catch (error) {
-    console.error("Chat Error:", error);
-
-    // Handle JSON parse errors explicitly
-    if (error instanceof SyntaxError && error.message.includes("JSON")) {
-      return res.status(500).json({
-        error: "Ollama returned invalid JSON. Likely streaming — ensure 'stream: false'.",
-      });
-    }
-
-    res.status(500).json({ error: "Something went wrong while calling Ollama." });
+    console.error("Streaming error:", error);
+    res.write(`data: Error: ${error.message}\n\n`);
+    res.end();
   }
 });
 
-// Start server
+// Start the server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`✅ Server is running on http://localhost:${PORT}`);
+  console.log(`Server running with streaming on http://localhost:${PORT}`);
 });

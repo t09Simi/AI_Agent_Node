@@ -23,6 +23,9 @@ Run the server
 
 ![alt text](image.png)
 
+Run on localhost: 
+http://localhost:5000/
+
 ## Future work & Improvemnets
 
 Node.js state management and  local storage for the chat history to persistbefore refreshing the page.
